@@ -79,7 +79,7 @@ def run_grid_search(datasets: list, structures: list, K: int,
     # Logging
     logdir = f"logs/_{experiment_name}" + str(date.today()) + "_" + str(round(time.time())) + "_gvar"
     print("Log directory: " + logdir + "/")
-    os.mkdir(path=logdir)
+    os.makedirs(logdir, exist_ok=True)
 
     # For binary structures
     mean_accs = np.zeros((1, 1))
