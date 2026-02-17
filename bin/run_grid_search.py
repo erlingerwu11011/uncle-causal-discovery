@@ -6,12 +6,29 @@ import time
 from datetime import date
 from experimental_utils import run_grid_search
 
+
+def parse_sheet_name(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return value
+
 parser = argparse.ArgumentParser(description='UnCLe Runner')
 
 
 # Simulation model parameters
 parser.add_argument('--experiment', type=str, default="lorenz96_0", help="Experiment to be performed (default: "
                                                                        "'lorenz96_0')")
+parser.add_argument('--data-path', type=str, default=None,
+                    help='Path to a custom dataset file (.csv/.xls/.xlsx).')
+parser.add_argument('--structure-path', type=str, default=None,
+                    help='Optional path to a ground-truth structure file (.csv/.xls/.xlsx).')
+parser.add_argument('--sheet-name', type=parse_sheet_name, default=0,
+                    help='Sheet name/index for Excel input files (default: 0).')
+parser.add_argument('--results-only', action='store_true',
+                    help='Only save inferred causal results, skip evaluation metrics.')
+parser.add_argument('--binarize-quantile', type=float, default=0.9,
+                    help='Quantile threshold for auto-binarization (default: 0.9).')
 
 # Model specification
 parser.add_argument('--K', type=int, default=5, help='Kernel size (default: 5)')
@@ -103,11 +120,39 @@ elif args.experiment == "unicsl_fmri":
         a_i = pd.read_csv(f"../datasets/fMRI/fMRI_struct_{i}.csv", index_col=None)
         datasets.append(data_i.to_numpy())
         structures.append(a_i.to_numpy())
+elif args.experiment == "unicsl_custom":
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    import numpy as np
+
+    if args.data_path is None:
+        raise ValueError("--data-path is required when --experiment=unicsl_custom")
+
+    ext = os.path.splitext(args.data_path)[1].lower()
+    if ext in [".xls", ".xlsx"]:
+        data_i = pd.read_excel(args.data_path, sheet_name=args.sheet_name)
+    else:
+        data_i = pd.read_csv(args.data_path, index_col=None)
+    data_i[:] = StandardScaler().fit_transform(data_i[:])
+    datasets.append(data_i.to_numpy())
+
+    if args.structure_path is not None:
+        struct_ext = os.path.splitext(args.structure_path)[1].lower()
+        if struct_ext in [".xls", ".xlsx"]:
+            a_i = pd.read_excel(args.structure_path, sheet_name=args.sheet_name)
+        else:
+            a_i = pd.read_csv(args.structure_path, index_col=None)
+        structures.append(a_i.to_numpy())
+    else:
+        structures = None
 else:
-    NotImplementedError("ERROR: This experiment is not supported!")
+    raise NotImplementedError("ERROR: This experiment is not supported!")
+
+compute_metrics = (not args.results_only) and (structures is not None)
 
 run_grid_search(datasets=datasets, K=args.K, structures=structures,
                 num_hidden_layers=args.num_hidden_layers, hidden_layer_size=args.hidden_layer_size,
                 num_epochs_1=args.num_epochs_1, num_epochs_2=args.num_epochs_2, initial_lr=args.initial_lr,
                 seed=args.seed, use_cuda=args.use_cuda,
-                cuda_i=args.cuda_i, experiment_name=args.experiment)
+                cuda_i=args.cuda_i, experiment_name=args.experiment, compute_metrics=compute_metrics,
+                auto_binarize=True, binarize_quantile=args.binarize_quantile)

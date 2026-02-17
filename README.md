@@ -61,5 +61,35 @@ bash ./run_l96_0
 
 The script typically calls `run_grid_search.py` with specific arguments (dataset, model parameters, training epochs). 
 
+
+### 2.1 Running on your own Excel/CSV file 📄
+You can run UnCLe directly on a custom dataset (including `pd.read_excel(...).values`-style inputs) with:
+
+```bash
+python bin/run_grid_search.py \
+  --experiment unicsl_custom \
+  --data-path "C:/Users/13377/Desktop/test1.xlsx" \
+  --results-only
+```
+
+> `--results-only` is recommended when you only need causal discovery results (inferred matrices) and do not need evaluation metrics.
+
+Optional: provide a ground-truth causal structure file to compute AUROC/AUPRC/accuracy:
+
+```bash
+python bin/run_grid_search.py \
+  --experiment unicsl_custom \
+  --data-path "C:/Users/13377/Desktop/test1.xlsx" \
+  --structure-path "C:/path/to/ground_truth_structure.xlsx"
+```
+
+If `--structure-path` is omitted, the script still trains and saves inferred causal matrices, but skips metric computation.
+
+For direct causal edge output, the run now auto-binarizes the inferred matrices and saves edge lists:
+- `edges_i0_j0_l0.csv` (from Permutation graph)
+- `edges_i0_j0_l0_2.csv` (from Parameter graph)
+
+You can adjust binarization sensitivity with `--binarize-quantile` (higher means fewer edges).
+
 ### 3. Results 📊
 The experiment logs and results (including inferred causal structures and accuracy metrics) will be saved in the `logs/` directory generated during execution.
