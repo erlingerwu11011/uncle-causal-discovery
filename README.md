@@ -89,6 +89,8 @@ For direct causal edge output, the run now auto-binarizes the inferred matrices 
 - `edges_i0_j0_l0.csv` (from Permutation graph)
 - `edges_i0_j0_l0_2.csv` (from Parameter graph)
 
+Edge-list CSV format is: `source,target` (0-based variable indices), where each row means a directed edge `source -> target`.
+
 You can adjust binarization sensitivity with `--binarize-quantile` (higher means fewer edges).
 
 ### 3. Results 📊
