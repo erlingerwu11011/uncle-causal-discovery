@@ -12,6 +12,12 @@ parser = argparse.ArgumentParser(description='UnCLe Runner')
 # Simulation model parameters
 parser.add_argument('--experiment', type=str, default="lorenz96_0", help="Experiment to be performed (default: "
                                                                        "'lorenz96_0')")
+parser.add_argument('--data-path', type=str, default=None,
+                    help='Path to a custom dataset file (.csv/.xls/.xlsx).')
+parser.add_argument('--structure-path', type=str, default=None,
+                    help='Optional path to a ground-truth structure file (.csv/.xls/.xlsx).')
+parser.add_argument('--sheet-name', type=str, default=0,
+                    help='Sheet name/index for Excel input files (default: 0).')
 
 # Model specification
 parser.add_argument('--K', type=int, default=5, help='Kernel size (default: 5)')
@@ -103,6 +109,31 @@ elif args.experiment == "unicsl_fmri":
         a_i = pd.read_csv(f"../datasets/fMRI/fMRI_struct_{i}.csv", index_col=None)
         datasets.append(data_i.to_numpy())
         structures.append(a_i.to_numpy())
+elif args.experiment == "unicsl_custom":
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
+    import numpy as np
+
+    if args.data_path is None:
+        raise ValueError("--data-path is required when --experiment=unicsl_custom")
+
+    ext = os.path.splitext(args.data_path)[1].lower()
+    if ext in [".xls", ".xlsx"]:
+        data_i = pd.read_excel(args.data_path, sheet_name=args.sheet_name)
+    else:
+        data_i = pd.read_csv(args.data_path, index_col=None)
+    data_i[:] = StandardScaler().fit_transform(data_i[:])
+    datasets.append(data_i.to_numpy())
+
+    if args.structure_path is not None:
+        struct_ext = os.path.splitext(args.structure_path)[1].lower()
+        if struct_ext in [".xls", ".xlsx"]:
+            a_i = pd.read_excel(args.structure_path, sheet_name=args.sheet_name)
+        else:
+            a_i = pd.read_csv(args.structure_path, index_col=None)
+        structures.append(a_i.to_numpy())
+    else:
+        structures = None
 else:
     NotImplementedError("ERROR: This experiment is not supported!")
 

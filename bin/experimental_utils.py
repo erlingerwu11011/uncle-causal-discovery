@@ -73,6 +73,7 @@ def run_grid_search(datasets: list, structures: list, K: int,
     
 
     n_datasets = len(datasets)
+    has_ground_truth = structures is not None and len(structures) == n_datasets
 
     i, j = 0, 0
     accs_ij = []
@@ -84,101 +85,102 @@ def run_grid_search(datasets: list, structures: list, K: int,
     
     for l in range(n_datasets):
         d_l = datasets[l]
-        a_l = structures[l]
+        a_l = structures[l] if has_ground_truth else None
 
         permutation_graph, parameter_graph = run_unicsl(d_l, initial_lr, num_epochs_1, num_epochs_2, experiment_name, use_cuda, cuda_i, seed, num_hidden_layers, hidden_layer_size, K)
-
-        a_l_nodiag = a_l.copy()
-        np.fill_diagonal(a_l_nodiag, 0)
-        a_l_nodiag = a_l_nodiag.flatten()
 
         a_hat_l_ = permutation_graph                                        
         a_hat_df = pd.DataFrame(a_hat_l_)
         a_hat_df.to_csv(logdir + f"/struct_i{i}_j{j}_l{l}.csv", index=False)
-            
-        a_hat_l_nodiag = a_hat_l_.copy()
-        np.fill_diagonal(a_hat_l_nodiag, 0)
-        a_hat_l_nodiag = a_hat_l_nodiag.flatten()
-        auroc_l = roc_auc_score(a_l_nodiag, a_hat_l_nodiag)
-        pr_curve = precision_recall_curve(a_l_nodiag, a_hat_l_nodiag)
-        auprc_l = auc(pr_curve[1], pr_curve[0])
-        opt_acc = opt_threshold_acc(a_l_nodiag, a_hat_l_nodiag)
-        acc_l = opt_acc[1]
         
-        accs_ij.append(acc_l)
-        
-        aurocs_ij.append(auroc_l)
-        auprcs_ij.append(auprc_l)
-        print("Dataset #" + str(l + 1) + ";\n [Permutation] Acc.: " + str(np.round(acc_l, 4)) + 
-            "; AUROC: " + str(np.round(auroc_l, 4)) + "; AUPRC: " +
-            str(np.round(auprc_l, 4)))
+        if has_ground_truth:
+            a_l_nodiag = a_l.copy()
+            np.fill_diagonal(a_l_nodiag, 0)
+            a_l_nodiag = a_l_nodiag.flatten()
+
+            a_hat_l_nodiag = a_hat_l_.copy()
+            np.fill_diagonal(a_hat_l_nodiag, 0)
+            a_hat_l_nodiag = a_hat_l_nodiag.flatten()
+            auroc_l = roc_auc_score(a_l_nodiag, a_hat_l_nodiag)
+            pr_curve = precision_recall_curve(a_l_nodiag, a_hat_l_nodiag)
+            auprc_l = auc(pr_curve[1], pr_curve[0])
+            opt_acc = opt_threshold_acc(a_l_nodiag, a_hat_l_nodiag)
+            acc_l = opt_acc[1]
+
+            accs_ij.append(acc_l)
+
+            aurocs_ij.append(auroc_l)
+            auprcs_ij.append(auprc_l)
+            print("Dataset #" + str(l + 1) + ";\n [Permutation] Acc.: " + str(np.round(acc_l, 4)) + 
+                "; AUROC: " + str(np.round(auroc_l, 4)) + "; AUPRC: " +
+                str(np.round(auprc_l, 4)))
+        else:
+            print("Dataset #" + str(l + 1) + ";\n [Permutation] Saved inferred structure (ground truth not provided).")
         
         a_hat_l_ = parameter_graph                                        
         a_hat_df = pd.DataFrame(a_hat_l_)
         a_hat_df.to_csv(logdir + f"/struct_i{i}_j{j}_l{l}_2.csv", index=False)
             
-        a_hat_l_nodiag = a_hat_l_.copy()
-        np.fill_diagonal(a_hat_l_nodiag, 0)
-        a_hat_l_nodiag = a_hat_l_nodiag / (a_hat_l_nodiag.sum(axis=0) + 1e-13)
-        a_hat_l_nodiag = a_hat_l_nodiag.flatten()
-        auroc_l = roc_auc_score(a_l_nodiag, a_hat_l_nodiag)
-        pr_curve = precision_recall_curve(a_l_nodiag, a_hat_l_nodiag)
-        auprc_l = auc(pr_curve[1], pr_curve[0])
-        opt_acc = opt_threshold_acc(a_l_nodiag, a_hat_l_nodiag)
-        acc_l = opt_acc[1]
-        
-        accs_ij2.append(acc_l)
-        
-        aurocs_ij2.append(auroc_l)
-        auprcs_ij2.append(auprc_l)
-        print("[Parameter] Acc.: " + str(np.round(acc_l, 4)) + 
-            "; AUROC: " + str(np.round(auroc_l, 4)) + "; AUPRC: " +
-            str(np.round(auprc_l, 4)))
-                
-    print("Permutation")
-    mean_accs[i, j] = np.mean(accs_ij)
-    print("Acc.         :" + str(mean_accs[i, j]))
-    sd_accs[i, j] = np.std(accs_ij)
-    
+        if has_ground_truth:
+            a_hat_l_nodiag = a_hat_l_.copy()
+            np.fill_diagonal(a_hat_l_nodiag, 0)
+            a_hat_l_nodiag = a_hat_l_nodiag / (a_hat_l_nodiag.sum(axis=0) + 1e-13)
+            a_hat_l_nodiag = a_hat_l_nodiag.flatten()
+            auroc_l = roc_auc_score(a_l_nodiag, a_hat_l_nodiag)
+            pr_curve = precision_recall_curve(a_l_nodiag, a_hat_l_nodiag)
+            auprc_l = auc(pr_curve[1], pr_curve[0])
+            opt_acc = opt_threshold_acc(a_l_nodiag, a_hat_l_nodiag)
+            acc_l = opt_acc[1]
 
-    mean_aurocs[i, j] = np.mean(aurocs_ij)
-    print("AUROC        :" + str(mean_aurocs[i, j]))
-    sd_aurocs[i, j] = np.std(aurocs_ij)
-    mean_auprcs[i, j] = np.mean(auprcs_ij)
-    print("AUPRC        :" + str(mean_auprcs[i, j]))
-    sd_auprcs[i, j] = np.std(auprcs_ij)
-                
-    print("Parameter")
-    mean_accs2[i, j] = np.mean(accs_ij2)
-    print("Acc.         :" + str(mean_accs2[i, j]))
-    sd_accs2[i, j] = np.std(accs_ij2)
-    
+            accs_ij2.append(acc_l)
 
-    mean_aurocs2[i, j] = np.mean(aurocs_ij2)
-    print("AUROC        :" + str(mean_aurocs2[i, j]))
-    sd_aurocs2[i, j] = np.std(aurocs_ij2)
-    mean_auprcs2[i, j] = np.mean(auprcs_ij2)
-    print("AUPRC        :" + str(mean_auprcs2[i, j]))
-    sd_auprcs2[i, j] = np.std(auprcs_ij2)
-            
+            aurocs_ij2.append(auroc_l)
+            auprcs_ij2.append(auprc_l)
+            print("[Parameter] Acc.: " + str(np.round(acc_l, 4)) + 
+                "; AUROC: " + str(np.round(auroc_l, 4)) + "; AUPRC: " +
+                str(np.round(auprc_l, 4)))
+        else:
+            print("[Parameter] Saved inferred structure (ground truth not provided).")
+    if has_ground_truth:
+        print("Permutation")
+        mean_accs[i, j] = np.mean(accs_ij)
+        print("Acc.         :" + str(mean_accs[i, j]))
+        sd_accs[i, j] = np.std(accs_ij)
 
-    np.savetxt(fname=logdir + "/mean_accs.csv", X=mean_accs)
-    np.savetxt(fname=logdir + "/sd_accs.csv", X=sd_accs)
-    
+        mean_aurocs[i, j] = np.mean(aurocs_ij)
+        print("AUROC        :" + str(mean_aurocs[i, j]))
+        sd_aurocs[i, j] = np.std(aurocs_ij)
+        mean_auprcs[i, j] = np.mean(auprcs_ij)
+        print("AUPRC        :" + str(mean_auprcs[i, j]))
+        sd_auprcs[i, j] = np.std(auprcs_ij)
 
-    np.savetxt(fname=logdir + "/mean_aurocs.csv", X=mean_aurocs)
-    np.savetxt(fname=logdir + "/sd_aurocs.csv", X=sd_aurocs)
-    np.savetxt(fname=logdir + "/mean_auprcs.csv", X=mean_auprcs)
-    np.savetxt(fname=logdir + "/sd_auprcs.csv", X=sd_auprcs)
+        print("Parameter")
+        mean_accs2[i, j] = np.mean(accs_ij2)
+        print("Acc.         :" + str(mean_accs2[i, j]))
+        sd_accs2[i, j] = np.std(accs_ij2)
 
-    np.savetxt(fname=logdir + "/mean_accs2.csv", X=mean_accs2)
-    np.savetxt(fname=logdir + "/sd_accs2.csv", X=sd_accs2)
-    
+        mean_aurocs2[i, j] = np.mean(aurocs_ij2)
+        print("AUROC        :" + str(mean_aurocs2[i, j]))
+        sd_aurocs2[i, j] = np.std(aurocs_ij2)
+        mean_auprcs2[i, j] = np.mean(auprcs_ij2)
+        print("AUPRC        :" + str(mean_auprcs2[i, j]))
+        sd_auprcs2[i, j] = np.std(auprcs_ij2)
 
-    np.savetxt(fname=logdir + "/mean_aurocs2.csv", X=mean_aurocs2)
-    np.savetxt(fname=logdir + "/sd_aurocs2.csv", X=sd_aurocs2)
-    np.savetxt(fname=logdir + "/mean_auprcs2.csv", X=mean_auprcs2)
-    np.savetxt(fname=logdir + "/sd_auprcs2.csv", X=sd_auprcs2)
+        np.savetxt(fname=logdir + "/mean_accs.csv", X=mean_accs)
+        np.savetxt(fname=logdir + "/sd_accs.csv", X=sd_accs)
+
+        np.savetxt(fname=logdir + "/mean_aurocs.csv", X=mean_aurocs)
+        np.savetxt(fname=logdir + "/sd_aurocs.csv", X=sd_aurocs)
+        np.savetxt(fname=logdir + "/mean_auprcs.csv", X=mean_auprcs)
+        np.savetxt(fname=logdir + "/sd_auprcs.csv", X=sd_auprcs)
+
+        np.savetxt(fname=logdir + "/mean_accs2.csv", X=mean_accs2)
+        np.savetxt(fname=logdir + "/sd_accs2.csv", X=sd_accs2)
+
+        np.savetxt(fname=logdir + "/mean_aurocs2.csv", X=mean_aurocs2)
+        np.savetxt(fname=logdir + "/sd_aurocs2.csv", X=sd_aurocs2)
+        np.savetxt(fname=logdir + "/mean_auprcs2.csv", X=mean_auprcs2)
+        np.savetxt(fname=logdir + "/sd_auprcs2.csv", X=sd_auprcs2)
     
 from copy import deepcopy
 import argparse
