@@ -93,7 +93,9 @@ Edge-list CSV format is: `source,target` (0-based variable indices), where each 
 
 You can adjust binarization sensitivity with `--binarize-quantile` (higher means fewer edges).
 
-You can also export multiple threshold versions in one run with `--binarize-quantiles`, e.g. `--binarize-quantiles 0.8,0.9,0.95`.
+For convenience, both syntaxes are supported for multiple thresholds:
+- `--binarize-quantile 0.8,0.9,0.95`
+- `--binarize-quantiles 0.8,0.9,0.95`
 
 ### 3. Results 📊
 The experiment logs and results (including inferred causal structures and accuracy metrics) will be saved in the `logs/` directory generated during execution. The runner now auto-creates this directory when missing (useful for first-time runs on new custom datasets).

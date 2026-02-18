@@ -46,8 +46,9 @@ parser.add_argument('--sheet-name', type=parse_sheet_name, default=0,
                     help='Sheet name/index for Excel input files (default: 0).')
 parser.add_argument('--results-only', action='store_true',
                     help='Only save inferred causal results, skip evaluation metrics.')
-parser.add_argument('--binarize-quantile', type=float, default=0.9,
-                    help='Quantile threshold for auto-binarization (default: 0.9).')
+parser.add_argument('--binarize-quantile', type=str, default='0.9',
+                    help='Quantile threshold for auto-binarization. Accepts a single value (e.g. 0.9) '
+                         'or a comma-separated list (e.g. 0.8,0.9,0.95).')
 parser.add_argument('--binarize-quantiles', type=parse_quantile_list, default=None,
                     help='Optional comma-separated quantiles for multi-threshold exports, '
                          'e.g. "0.8,0.9,0.95".')
@@ -171,7 +172,7 @@ else:
     raise NotImplementedError("ERROR: This experiment is not supported!")
 
 compute_metrics = (not args.results_only) and (structures is not None)
-binarize_quantiles = args.binarize_quantiles if args.binarize_quantiles is not None else [args.binarize_quantile]
+binarize_quantiles = args.binarize_quantiles if args.binarize_quantiles is not None else parse_quantile_list(args.binarize_quantile)
 
 run_grid_search(datasets=datasets, K=args.K, structures=structures,
                 num_hidden_layers=args.num_hidden_layers, hidden_layer_size=args.hidden_layer_size,
