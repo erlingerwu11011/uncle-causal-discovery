@@ -13,6 +13,25 @@ def parse_sheet_name(value):
     except (TypeError, ValueError):
         return value
 
+
+def parse_quantile_list(value):
+    values = [v.strip() for v in str(value).split(",") if v.strip() != ""]
+    if len(values) == 0:
+        raise argparse.ArgumentTypeError("--binarize-quantiles cannot be empty")
+
+    quantiles = []
+    for v in values:
+        try:
+            q = float(v)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(f"Invalid quantile value: {v}") from exc
+
+        if q < 0.0 or q > 1.0:
+            raise argparse.ArgumentTypeError(f"Quantile must be within [0, 1], got: {v}")
+        quantiles.append(q)
+
+    return quantiles
+
 parser = argparse.ArgumentParser(description='UnCLe Runner')
 
 
@@ -29,6 +48,9 @@ parser.add_argument('--results-only', action='store_true',
                     help='Only save inferred causal results, skip evaluation metrics.')
 parser.add_argument('--binarize-quantile', type=float, default=0.9,
                     help='Quantile threshold for auto-binarization (default: 0.9).')
+parser.add_argument('--binarize-quantiles', type=parse_quantile_list, default=None,
+                    help='Optional comma-separated quantiles for multi-threshold exports, '
+                         'e.g. "0.8,0.9,0.95".')
 
 # Model specification
 parser.add_argument('--K', type=int, default=5, help='Kernel size (default: 5)')
@@ -149,10 +171,11 @@ else:
     raise NotImplementedError("ERROR: This experiment is not supported!")
 
 compute_metrics = (not args.results_only) and (structures is not None)
+binarize_quantiles = args.binarize_quantiles if args.binarize_quantiles is not None else [args.binarize_quantile]
 
 run_grid_search(datasets=datasets, K=args.K, structures=structures,
                 num_hidden_layers=args.num_hidden_layers, hidden_layer_size=args.hidden_layer_size,
                 num_epochs_1=args.num_epochs_1, num_epochs_2=args.num_epochs_2, initial_lr=args.initial_lr,
                 seed=args.seed, use_cuda=args.use_cuda,
                 cuda_i=args.cuda_i, experiment_name=args.experiment, compute_metrics=compute_metrics,
-                auto_binarize=True, binarize_quantile=args.binarize_quantile)
+                auto_binarize=True, binarize_quantiles=binarize_quantiles)

@@ -86,12 +86,14 @@ python bin/run_grid_search.py \
 If `--structure-path` is omitted, the script still trains and saves inferred causal matrices, but skips metric computation.
 
 For direct causal edge output, the run now auto-binarizes the inferred matrices and saves edge lists:
-- `edges_i0_j0_l0.csv` (from Permutation graph)
-- `edges_i0_j0_l0_2.csv` (from Parameter graph)
+- Single-threshold mode (default): `edges_i0_j0_l0.csv` (Permutation) and `edges_i0_j0_l0_2.csv` (Parameter)
+- Multi-threshold mode (`--binarize-quantiles`): appends suffixes such as `_q800`, `_q900`, `_q950`
 
 Edge-list CSV format is: `source,target` (0-based variable indices), where each row means a directed edge `source -> target`.
 
 You can adjust binarization sensitivity with `--binarize-quantile` (higher means fewer edges).
+
+You can also export multiple threshold versions in one run with `--binarize-quantiles`, e.g. `--binarize-quantiles 0.8,0.9,0.95`.
 
 ### 3. Results 📊
 The experiment logs and results (including inferred causal structures and accuracy metrics) will be saved in the `logs/` directory generated during execution. The runner now auto-creates this directory when missing (useful for first-time runs on new custom datasets).

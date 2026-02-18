@@ -62,7 +62,7 @@ def _save_edge_list(matrix, output_path):
 def run_grid_search(datasets: list, structures: list, K: int,
                     num_hidden_layers: int, hidden_layer_size: int, num_epochs_1: int, num_epochs_2: int,
                     initial_lr: float, seed: int, use_cuda=True, cuda_i=0, experiment_name=None,
-                    compute_metrics=True, auto_binarize=True, binarize_quantile=0.9):
+                    compute_metrics=True, auto_binarize=True, binarize_quantiles=None):
     """
     Evaluates GVAR model across a range of hyperparameters.
 
@@ -105,6 +105,8 @@ def run_grid_search(datasets: list, structures: list, K: int,
     
 
     n_datasets = len(datasets)
+    if binarize_quantiles is None:
+        binarize_quantiles = [0.9]
     has_ground_truth = compute_metrics and structures is not None and len(structures) == n_datasets
 
     i, j = 0, 0
@@ -126,10 +128,17 @@ def run_grid_search(datasets: list, structures: list, K: int,
         a_hat_df.to_csv(logdir + f"/struct_i{i}_j{j}_l{l}.csv", index=False)
 
         if auto_binarize:
-            bin_perm, th_perm = _binarize_adjacency(a_hat_l_, quantile=binarize_quantile)
-            pd.DataFrame(bin_perm).to_csv(logdir + f"/struct_i{i}_j{j}_l{l}_binary.csv", index=False)
-            _save_edge_list(bin_perm, logdir + f"/edges_i{i}_j{j}_l{l}.csv")
-            print(f"[Permutation] Auto-binarized with threshold={th_perm:.6f}; edges saved.")
+            multi_q = len(binarize_quantiles) > 1
+            for quantile in binarize_quantiles:
+                q_label = str(int(round(quantile * 1000))).zfill(3)
+                suffix = f"_q{q_label}" if multi_q else ""
+                bin_perm, th_perm = _binarize_adjacency(a_hat_l_, quantile=quantile)
+                pd.DataFrame(bin_perm).to_csv(logdir + f"/struct_i{i}_j{j}_l{l}_binary{suffix}.csv", index=False)
+                _save_edge_list(bin_perm, logdir + f"/edges_i{i}_j{j}_l{l}{suffix}.csv")
+                print(
+                    f"[Permutation] Quantile={quantile:.3f}; threshold={th_perm:.6f}; "
+                    f"saved suffix={suffix}."
+                )
         
         if has_ground_truth:
             a_l_nodiag = a_l.copy()
@@ -160,10 +169,17 @@ def run_grid_search(datasets: list, structures: list, K: int,
         a_hat_df.to_csv(logdir + f"/struct_i{i}_j{j}_l{l}_2.csv", index=False)
 
         if auto_binarize:
-            bin_param, th_param = _binarize_adjacency(a_hat_l_, quantile=binarize_quantile)
-            pd.DataFrame(bin_param).to_csv(logdir + f"/struct_i{i}_j{j}_l{l}_2_binary.csv", index=False)
-            _save_edge_list(bin_param, logdir + f"/edges_i{i}_j{j}_l{l}_2.csv")
-            print(f"[Parameter] Auto-binarized with threshold={th_param:.6f}; edges saved.")
+            multi_q = len(binarize_quantiles) > 1
+            for quantile in binarize_quantiles:
+                q_label = str(int(round(quantile * 1000))).zfill(3)
+                suffix = f"_q{q_label}" if multi_q else ""
+                bin_param, th_param = _binarize_adjacency(a_hat_l_, quantile=quantile)
+                pd.DataFrame(bin_param).to_csv(logdir + f"/struct_i{i}_j{j}_l{l}_2_binary{suffix}.csv", index=False)
+                _save_edge_list(bin_param, logdir + f"/edges_i{i}_j{j}_l{l}_2{suffix}.csv")
+                print(
+                    f"[Parameter] Quantile={quantile:.3f}; threshold={th_param:.6f}; "
+                    f"saved suffix={suffix}."
+                )
             
         if has_ground_truth:
             a_hat_l_nodiag = a_hat_l_.copy()
